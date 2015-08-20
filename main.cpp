@@ -47,7 +47,7 @@ int main(int argc, char** argv)
     write("EpB.dat", ff.calc_Eps(0,ZB), digits);
     write("EpF.dat", ff.calc_Eps(1,ZF), digits);
     write("sgn.dat", ff.calc_sign(ZB), digits);
-    //write("Pk.dat", ff.calc_Pk());
+    write("Pk.dat", ff.calc_Pks(ZB), digits);
     write("EB.dat", ff.calc_dZdB(0)/ZB, digits);
     write("EF.dat", -ff.calc_dZdB(1)/ZF, digits);
 

@@ -67,6 +67,27 @@ public:
         return tot;
     }
 
+    /// Calculate cycle probabilities
+    std::vector<RealType> calc_Pks(RealType Z){
+        std::vector<RealType> num(N_,0), dem(N_,0);
+        for(unsigned p=0; p<n_sectors_; p++){
+            for(unsigned l=0; l<N_; l++){
+                RealType PpB = utils::opt_abs(Zps_[p],1)/Z;
+                num[l] += PpB * cs_[p][l];
+                dem[l] += PpB;
+            }
+        }
+        std::vector<RealType> Pks(N_);
+        RealType tot(0);
+        for(unsigned l=0; l<N_; l++){
+            Pks[l] = num[l]/dem[l];
+            tot += Pks[l];
+        }
+        for(auto& Pk : Pks)
+            Pk /= tot;
+        return Pks;
+    }
+
 private:
     unsigned N_; ///< number of particles
     unsigned D_; ///< dimension of system

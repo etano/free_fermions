@@ -13,7 +13,7 @@
 #include <functional>
 // }}}
 
-#include "utils/mpreal.h"
+#include "utils/mpreal.hpp"
 #include "utils/cout.hpp"
 #include "utils/math.hpp"
 #include "utils/optional.hpp"
