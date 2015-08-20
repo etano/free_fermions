@@ -10,6 +10,7 @@
 #include <string>
 #include <functional>
 #include <assert.h>
+#include <random>
 // }}}
 
 #include "mpreal.hpp"
@@ -18,5 +19,7 @@
 #include "math.hpp"
 #include "optional.hpp"
 #include "parameters.hpp"
+#include "random.hpp"
+#include "stats.hpp"
 
 #endif

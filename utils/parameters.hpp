@@ -29,6 +29,14 @@ namespace utils {
     template <>
     uint32_t str_to_val(const std::string& val) { return stoi(val); }
 
+    template<class T>
+    std::vector<T> convert_vec(const std::vector<std::string>& vs){
+        std::vector<T> w;
+        for(const auto& v : vs)
+            w.push_back(str_to_val<T>(v));
+        return std::move(w);
+    }
+
 }
 
 namespace utils {

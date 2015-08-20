@@ -42,6 +42,10 @@ int main(int argc, char** argv)
     std::cout << "calculating quantities..." << std::endl;
     utils::write("PpEpB.dat", utils::zip(ff.calc_Pps(0),ff.calc_Eps(0)), digits);
     utils::write("PpEpF.dat", utils::zip(ff.calc_Pps(1),ff.calc_Eps(1)), digits);
+    utils::write("PpB.dat", ff.calc_Pps(0), digits);
+    utils::write("PpF.dat", ff.calc_Pps(1), digits);
+    utils::write("EpB.dat", ff.calc_Eps(0), digits);
+    utils::write("EpF.dat", ff.calc_Eps(1), digits);
     utils::write("EB.dat", ff.calc_E(0), digits);
     utils::write("EF.dat", ff.calc_E(1), digits);
     utils::write("sgn.dat", ff.calc_sign(), digits);

@@ -26,6 +26,29 @@ void write(const std::string& f, const T val, const unsigned digits=10){
     f_stream.close();
 }
 
+void split(const std::string& s, char delim, std::vector<std::string>& elem) {
+    std::istringstream ss(s);
+    std::string item;
+    while(std::getline(ss, item, delim)) {
+        if(!item.empty())
+            elem.push_back(item);
+    }
+}
+
+std::vector<std::vector<std::string>> read_file(const std::string& file_name, char delim, const unsigned n_columns){
+    std::vector<std::vector<std::string>> data(n_columns);
+    std::ifstream infile(file_name);
+    for(std::string line; std::getline(infile,line);){
+        std::vector<std::string> elements;
+        utils::split(line,delim,elements);
+        if(!elements.empty()){
+            for(unsigned i=0; i<elements.size(); i++)
+                data[i].push_back(elements[i]);
+        }
+    }
+    return std::move(data);
+}
+
 }
 
 #endif
