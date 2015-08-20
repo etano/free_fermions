@@ -1,4 +1,4 @@
-#include "main.hpp"
+#include "free_fermions.h"
 
 int main(int argc, char** argv)
 {
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 
     // Create free fermion system
     std::cout << "creating free fermion system..." << std::endl;
-    FreeFermions<RealType> ff(N,D,L,T,lambda,n_max);
+    free_fermions::FreeFermions<RealType> ff(N,D,L,T,lambda,n_max);
 
     // Write data to file
     std::cout << "calculating quantities..." << std::endl;
@@ -51,4 +51,3 @@ int main(int argc, char** argv)
 
     return 0;
 }
-

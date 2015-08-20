@@ -1,6 +1,7 @@
 #ifndef FREE_FERMIONS_HPP
 #define FREE_FERMIONS_HPP
 
+namespace free_fermions{
 
 /// Class that builds a free fermion system and computes quantities of it.
 template<typename RealType>
@@ -242,5 +243,7 @@ private:
 
 
 };
+
+}
 
 #endif
