@@ -1,5 +1,5 @@
-#ifndef UTILS_COUT_HPP
-#define UTILS_COUT_HPP
+#ifndef UTILS_OSTREAM_HPP
+#define UTILS_OSTREAM_HPP
 
 template<class T>
 std::ostream& operator<<(std::ostream& out, const std::vector<T>& vs){
@@ -10,8 +10,8 @@ std::ostream& operator<<(std::ostream& out, const std::vector<T>& vs){
 
 template<class T, class U>
 std::ostream& operator<<(std::ostream& out, const std::vector<std::pair<T,U>>& vs){
-    for(const auto& v : vs)
-        out << v.first << " : " << v.second << std::endl;
+    for(unsigned i=0; i<vs.size(); i++)
+        out << i << " " << vs[i].first << " " << vs[i].second << std::endl;
     return out;
 }
 

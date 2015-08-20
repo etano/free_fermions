@@ -22,21 +22,21 @@ mpfr::mpreal const_pi(){
 }
 
 template<class T>
-int sgn(T val) {
+int sgn(const T& val){
     return (T(0) < val) - (val < T(0));
 }
-
-template<class T>
-T running_abs(T sum_so_far, T x){
-    return sum_so_far + sqrt(x*x);
+template<>
+int sgn(const mpfr::mpreal& val){
+    return mpfr::sgn(val);
 }
 
 template<class T>
-T opt_abs(T val, bool opt){
-    if(opt)
-        return sqrt(val*val);
-    else
-        return val;
+T abs(const T& val){
+    return std::abs(val);
+}
+template<>
+mpfr::mpreal abs(const mpfr::mpreal& val){
+    return mpfr::abs(val);
 }
 
 }

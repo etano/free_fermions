@@ -11,10 +11,12 @@
 #include <numeric>
 #include <string>
 #include <functional>
+#include <assert.h>
 // }}}
 
 #include "utils/mpreal.hpp"
-#include "utils/cout.hpp"
+#include "utils/ostream.hpp"
+#include "utils/function.hpp"
 #include "utils/math.hpp"
 #include "utils/optional.hpp"
 #include "utils/parameters.hpp"
