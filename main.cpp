@@ -14,6 +14,7 @@ int main(int argc, char** argv)
     bool use_egas_units = params.pop<bool>("units") or false;
     int n_max = params.pop<int>("n_max") or 10;
     const int digits = params.pop<int>("precision") or 8;
+    bool add_noise = params.pop<bool>("add_noise") or false;
 
     // Set precision
     using RealType = mpfr::mpreal;
@@ -38,20 +39,39 @@ int main(int argc, char** argv)
     std::cout << "creating free fermion system..." << std::endl;
     free_fermions::FreeFermions<RealType> ff(N,D,L,T,lambda,n_max);
 
-    // Write data to file
+    // Calculate things
     std::cout << "calculating quantities..." << std::endl;
-    utils::write("PpEpB.dat", utils::zip(ff.calc_Pps(0),ff.calc_Eps(0)), digits);
-    utils::write("PpEpF.dat", utils::zip(ff.calc_Pps(1),ff.calc_Eps(1)), digits);
-    utils::write("PpB.dat", ff.calc_Pps(0), digits);
-    utils::write("PpF.dat", ff.calc_Pps(1), digits);
-    utils::write("EpB.dat", ff.calc_Eps(0), digits);
-    utils::write("EpF.dat", ff.calc_Eps(1), digits);
-    utils::write("EB.dat", ff.calc_E(0), digits);
-    utils::write("EF.dat", ff.calc_E(1), digits);
-    utils::write("sgn.dat", ff.calc_sign(), digits);
-    utils::write("Pk.dat", ff.calc_Pks(), digits);
-    utils::write("Pl.dat", ff.calc_Pls(), digits);
-    utils::write("Plm1.dat", ff.calc_Plm1s(), digits);
+    auto PpB(ff.calc_Pps(0)); auto PpF(ff.calc_Pps(1));
+    auto EpB(ff.calc_Eps(0)); auto EpF(ff.calc_Eps(1));
+    auto EB(ff.calc_E(0)); auto EF(ff.calc_E(1));
+    auto sign(ff.calc_sign()); auto Pk(ff.calc_Pks());
+    auto Pl(ff.calc_Pls()); auto Plm1(ff.calc_Plm1s());
+
+    // Write data to file
+    std::cout << "writing to file..." << std::endl;
+    utils::write("PpEpB.dat", utils::zip(PpB,EpB), digits);
+    utils::write("PpEpF.dat", utils::zip(PpF,EpF), digits);
+    utils::write("PpB.dat", PpB, digits);
+    utils::write("PpF.dat", PpF, digits);
+    utils::write("EpB.dat", EpB, digits);
+    utils::write("EpF.dat", EpF, digits);
+    utils::write("EB.dat", EB, digits);
+    utils::write("EF.dat", EF, digits);
+    utils::write("sgn.dat", sign, digits);
+    utils::write("Pk.dat", Pk, digits);
+    utils::write("Pl.dat", Pl, digits);
+    utils::write("Plm1.dat", Plm1, digits);
+    if(add_noise){
+        auto noise_ps(PpB);
+        for(auto& n : noise_ps)
+            n.second = 1e-100;
+        auto noise_ks(Pk);
+        for(auto& n : noise_ks)
+            n.second = 1e-100;
+        utils::write("PpB.dat", utils::zip(PpB,noise_ps), digits);
+        utils::write("EpB.dat", utils::zip(EpB,noise_ps), digits);
+        utils::write("Pk.dat", utils::zip(Pk,noise_ks), digits);
+    }
 
     return 0;
 }

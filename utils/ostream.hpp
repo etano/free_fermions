@@ -15,6 +15,20 @@ std::ostream& operator<<(std::ostream& out, const std::vector<std::pair<T,U>>& v
     return out;
 }
 
+template<class T, class U>
+std::ostream& operator<<(std::ostream& out, const std::map<T,U>& vs){
+    for(const auto& v : vs)
+        out << v.first << " " << v.second << std::endl;
+    return out;
+}
+
+template<class T, class U, class V>
+std::ostream& operator<<(std::ostream& out, const std::map<T,std::pair<U,V>>& vs){
+    for(const auto& v : vs)
+        out << v.first << " " << v.second.first << " " << v.second.second << std::endl;
+    return out;
+}
+
 namespace utils{
 
 template<class T>

@@ -65,14 +65,14 @@ T kappa(const std::vector<T>& x, const T& m, const T& v, const int N)
 }
 
 template<class T>
-std::vector<T> unweighted_avg(std::vector<T>& means, std::vector<T>& errors, std::vector<T>& kappas)
+std::vector<T> unweighted_avg(const std::vector<T>& means, const std::vector<T>& errors, const std::vector<T>& kappas)
 {
     int N = means.size();
     return std::vector<T>{mean(means,N),root_mean2(errors,N),mean(kappas,N)};
 }
 
 template<class T>
-std::vector<T> stats(std::vector<T>& x)
+std::vector<T> stats(const std::vector<T>& x)
 {
     int N = x.size();
     T m(mean(x,N));
@@ -82,23 +82,22 @@ std::vector<T> stats(std::vector<T>& x)
     return std::move(std::vector<T>{m,e,k});
 }
 
-template<class T, typename F, typename... Args>
-std::vector<std::pair<T,T>> bootstrap(const std::vector<T>& ys, const std::vector<T>& y_errs, const unsigned n_bootstrap, const unsigned n_param, F f, utils::rng<T>& rand, Args&&... args){
+template<class T, class U, typename F, typename... Args>
+std::map<T,std::pair<U,U>> bootstrap(const std::map<T,U>& ys, const std::map<T,U>& y_errs, const unsigned n_bootstrap, F f, utils::rng<U>& rand, Args&&... args){
     assert(ys.size() == y_errs.size());
-    unsigned N = ys.size();
-    std::vector<std::vector<T>> p_normals(n_param);
+    std::map<T,std::vector<U>> p_normals;
     for(unsigned i=0; i<n_bootstrap; i++){
-        std::vector<T> y_normals;
-        for(unsigned j=0; j<N; j++)
-            y_normals.push_back(rand.norm_rand(ys[j],y_errs[j]));
-        auto p(f(y_normals,args...));
-        for(unsigned j=0; j<n_param; j++)
-            p_normals[j].push_back(p[j]);
+        std::map<T,U> y_normals;
+        for(const auto& y : ys)
+            y_normals[y.first] = rand.norm_rand(y.second,y_errs.at(y.first));
+        std::map<T,U> ps(f(y_normals,args...));
+        for(const auto& p : ps)
+            p_normals[p.first].push_back(p.second);
     }
-    std::vector<std::pair<T,T>> means_errors;
-    for(unsigned i=0; i<n_param; i++){
-        auto s(stats(p_normals[i]));
-        means_errors.push_back(std::make_pair(s[0],s[1]));
+    std::map<T,std::pair<U,U>> means_errors;
+    for(const auto& ps : p_normals){
+        auto s(stats(ps.second));
+        means_errors[ps.first] = std::make_pair(s[0],s[1]);
     }
     return std::move(means_errors);
 }

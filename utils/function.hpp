@@ -3,12 +3,12 @@
 
 namespace utils{
 
-template<class T, class U>
-std::vector<std::pair<T,U>> zip(const std::vector<T>& a, const std::vector<U>& b){
+template<class T, class U, class V>
+std::map<T,std::pair<U,V>> zip(const std::map<T,U>& a, const std::map<T,V>& b){
     assert(a.size() == b.size());
-    std::vector<std::pair<T,U>> c;
-    for(unsigned i=0; i<a.size(); i++)
-        c.push_back(std::make_pair(a[i],b[i]));
+    std::map<T,std::pair<U,V>> c;
+    for(const auto& e : a)
+        c[e.first] = std::make_pair(a.at(e.first),b.at(e.first));
     return std::move(c);
 }
 
