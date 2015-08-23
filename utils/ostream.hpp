@@ -29,6 +29,18 @@ std::ostream& operator<<(std::ostream& out, const std::map<T,std::pair<U,V>>& vs
     return out;
 }
 
+template<class T, class U>
+std::ostream& operator<<(std::ostream& out, const std::unordered_map<T,U>& vs){
+    out << std::map<T,U>(vs.begin(),vs.end());
+    return out;
+}
+
+template<class T, class U, class V>
+std::ostream& operator<<(std::ostream& out, const std::unordered_map<T,std::pair<U,V>>& vs){
+    out << std::map<T,std::pair<U,V>>(vs.begin(),vs.end());
+    return out;
+}
+
 namespace utils{
 
 template<class T>

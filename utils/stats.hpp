@@ -83,18 +83,18 @@ std::vector<T> stats(const std::vector<T>& x)
 }
 
 template<class T, class U, typename F, typename... Args>
-std::map<T,std::pair<U,U>> bootstrap(const std::map<T,U>& ys, const std::map<T,U>& y_errs, const unsigned n_bootstrap, F f, utils::rng<U>& rand, Args&&... args){
+std::unordered_map<T,std::pair<U,U>> bootstrap(const std::unordered_map<T,U>& ys, const std::unordered_map<T,U>& y_errs, const unsigned n_bootstrap, F f, utils::rng<U>& rand, Args&&... args){
     assert(ys.size() == y_errs.size());
-    std::map<T,std::vector<U>> p_normals;
+    std::unordered_map<T,std::vector<U>> p_normals;
     for(unsigned i=0; i<n_bootstrap; i++){
-        std::map<T,U> y_normals;
+        std::unordered_map<T,U> y_normals;
         for(const auto& y : ys)
             y_normals[y.first] = rand.norm_rand(y.second,y_errs.at(y.first));
-        std::map<T,U> ps(f(y_normals,args...));
+        std::unordered_map<T,U> ps(f(y_normals,args...));
         for(const auto& p : ps)
             p_normals[p.first].push_back(p.second);
     }
-    std::map<T,std::pair<U,U>> means_errors;
+    std::unordered_map<T,std::pair<U,U>> means_errors;
     for(const auto& ps : p_normals){
         auto s(stats(ps.second));
         means_errors[ps.first] = std::make_pair(s[0],s[1]);

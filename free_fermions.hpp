@@ -6,6 +6,8 @@ namespace free_fermions{
 /// Class that builds a free fermion system and computes quantities of it.
 template<typename RealType>
 class FreeFermions{
+    using MapRealType = std::unordered_map<unsigned,RealType>;
+    using MapVectorIntType = std::unordered_map<unsigned,std::vector<unsigned>>;
 public:
     /// Constructor computes \Beta and V, and generates permutation sectors, k vectors, Z0s, dZ0dBs, Zps, dZpdBs, ZB, ZF, EB, and EF.
     FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType lambda, const unsigned n_max, const bool generate_all=true)
@@ -27,10 +29,114 @@ public:
         }
     }
 
+    /// Calculate sign of sector given cycles
+    static int calc_sector_sign(const std::vector<unsigned>& c){
+        unsigned n_even = 0;
+        for(const auto& l : c)
+            if((l+1)%2==0)
+                n_even++;
+        return (n_even%2==0) ? 1 : -1;
+    }
+
+    /// Calculate energy given Eps, Pps and cs
+    static MapRealType calc_energy_from_Eps_Pps(const MapRealType& Eps, const MapRealType& Pps, const MapVectorIntType& cs){
+        RealType num(0), dem(0);
+        for(const auto& Pp : Pps){
+            int sign = calc_sector_sign(cs.at(Pp.first));
+            num += sign*Pp.second*Eps.at(Pp.first);
+            dem += sign*Pp.second;
+        }
+        return MapRealType{{0,num/dem}};
+    }
+
+    /// Calculate Pps from Pls
+    static MapRealType calc_Pps_from_Pls(const MapRealType& Pls, const MapVectorIntType& cs){
+        // Calculate constants
+        unsigned N = cs.at(0).size();
+        MapRealType i_factorial_i;
+        for(unsigned i=0; i<=N; i++)
+            i_factorial_i[i] = 1/utils::factorial<RealType>(i);
+        std::unordered_map<unsigned,MapRealType> Ppls;
+        for(const auto& Pl : Pls)
+            for(unsigned i=0; i<=N; i++)
+                Ppls[Pl.first][i] = i_factorial_i[i]*pow(Pl.second/(Pl.first+1),i);
+
+        // Calculate Pps
+        MapRealType Pps;
+        RealType Pp_tot(0);
+        for(const auto& c : cs){
+            RealType tot(1);
+            for(const auto& Pl : Pls)
+                tot *= Ppls[Pl.first][c.second[Pl.first]];
+            Pps[c.first] = tot;
+            Pp_tot += tot;
+        }
+        for(auto& Pp : Pps)
+            Pp /= Pp_tot;
+        return std::move(Pps);
+    }
+
+    /// Calculate average sign from Pps
+    static MapRealType calc_sign_from_Pps(const MapRealType& Pps, const MapVectorIntType& cs){
+        RealType tot(0);
+        for(const auto& Pp : Pps)
+            tot += calc_sector_sign(cs.at(Pp.first))*Pp.second;
+        return MapRealType{{0,tot}};
+    }
+
+    /// Calculate average sign from Pls
+    static MapRealType calc_sign_from_Pls(const MapRealType& Pls, const MapVectorIntType& cs){
+        return calc_sign_from_Pps(calc_Pps_from_Pls(Pls,cs),cs);
+    }
+
+    /// Calculate cycle probabilities
+    static MapRealType calc_Pks_from_Pps(const MapRealType& Pps, const MapVectorIntType& cs){
+        unsigned N = cs.at(0).size();
+        std::vector<RealType> num(N,0), dem(N,0);
+        for(const auto& Pp : Pps){
+            for(unsigned l=0; l<N; l++){
+                num[l] += Pp.second * cs.at(Pp.first)[l];
+                dem[l] += Pp.second;
+            }
+        }
+        MapRealType Pks;
+        RealType tot(0);
+        for(unsigned l=0; l<N; l++){
+            Pks[l] = num[l]/dem[l];
+            tot += Pks[l];
+        }
+        for(auto& Pk : Pks) // TODO: Not sure if normalization is needed
+            Pk.second /= tot;
+        return Pks;
+    }
+
+    /// Calculate Pks from Pls
+    static MapRealType calc_Pks_from_Pls(const MapRealType& Pls, const MapVectorIntType& cs){
+        return calc_Pks_from_Pps(calc_Pps_from_Pls(Pls,cs),cs);
+    }
+
+    /// Calculate Eps from Els
+    static MapRealType calc_Eps_from_Els(const MapRealType& Els, const MapVectorIntType& cs){
+        unsigned N = cs.at(0).size();
+        MapRealType Eps;
+        for(const auto& c : cs){
+            RealType tot(0);
+            for(unsigned l=0; l<N; l++)
+                tot += c.second[l]*Els.at(l)*(l+1);
+            Eps[c.first] = tot;
+        }
+        return std::move(Eps);
+    }
+
+    /// Calculate E from Els
+    static MapRealType calc_energy_from_Els(const MapRealType& Els, const MapRealType& Pps, const MapVectorIntType& cs){
+        return calc_energy_from_Eps_Pps(calc_Eps_from_Els(Els,cs),Pps,cs);
+    }
+
     /// Calculate Pp
-    std::map<unsigned,RealType> calc_Pps(const bool fermi){
+    MapRealType calc_Pps(const bool fermi){
         if(Zps_.size() != 0){
-            std::map<unsigned,RealType> Pps(Zps_);
+            MapRealType Pps(Zps_);
             for(auto& Pp : Pps)
                 Pp.second = fermi ? Pp.second/ZF_ : utils::abs(Pp.second)/ZB_;
             return std::move(Pps);
@@ -41,14 +147,57 @@ public:
     }
 
     /// Calculate Ep
-    std::map<unsigned,RealType> calc_Eps(const bool fermi){
+    MapRealType calc_Eps(const bool fermi){
         if((Zps_.size()!=0)&&(dZpdBs_.size()!=0)){
-            std::map<unsigned,RealType> Eps(dZpdBs_);
+            MapRealType Eps(dZpdBs_);
             for(auto& Ep : Eps)
                 Ep.second = fermi ? Ep.second/Zps_[Ep.first] : utils::abs(Ep.second/Zps_[Ep.first]);
             return std::move(Eps);
         }else{
             std::cerr << "ERROR: Zps or dZpdBs not yet generated!" << std::endl;
+            exit(1);
+        }
+    }
+
+    /// Calculate cycle probabilities
+    MapRealType calc_Pks(){
+        if(Zps_.size() != 0){
+            return calc_Pks_from_Pps(calc_Pps(0),cs_);
+        }else{
+            std::cerr << "ERROR: Zps not yet generated!" << std::endl;
+            exit(1);
+        }
+    }
+
+    /// Calculate Pls
+    MapRealType calc_Pls(){
+        if(Z0s_.size() != 0){
+            return Z0s_;
+        }else{
+            std::cerr << "ERROR: Z0s not yet generated!" << std::endl;
+            exit(1);
+        }
+    }
+
+    /// Calculate Plm1s
+    MapRealType calc_Plm1s(){
+        if(Z0s_.size() != 0){
+            MapRealType Plm1s(Z0s_);
+            for (auto& Pl : Plm1s)
+                Pl.second -= 1;
+            return Plm1s;
+        }else{
+            std::cerr << "ERROR: Z0s not yet generated!" << std::endl;
+            exit(1);
+        }
+    }
+
+    /// Calculate average sign
+    RealType calc_sign(){
+        if(Zps_.size() != 0){
+            return calc_sign_from_Pps(calc_Pps(0), cs_)[0];
+        }else{
+            std::cerr << "ERROR: Zps not yet generated!" << std::endl;
             exit(1);
         }
     }
@@ -63,113 +212,12 @@ public:
         }
     }
 
-    /// Calculate energy given Eps, Pps and cs
-    static std::map<unsigned,RealType> calc_energy_from_Eps_Pps(const std::map<unsigned,RealType>& Eps, const std::map<unsigned,RealType>& Pps, const std::map<unsigned,std::vector<unsigned>>& cs){
-        RealType num(0), dem(0);
-        for(const auto& Pp : Pps){
-            int sign = calc_sector_sign(cs.at(Pp.first));
-            num += sign*Pp.second*Eps.at(Pp.first);
-            dem += sign*Pp.second;
-        }
-        return std::map<unsigned,RealType>{{0,num/dem}};
-    }
-
-    /// Calculate sign of sector given cycles
-    static int calc_sector_sign(const std::vector<unsigned>& c){
-        unsigned n_even = 0;
-        for(const auto& l : c)
-            if((l+1)%2==0)
-                n_even++;
-        return (n_even%2==0) ? 1 : -1;
-    }
-
-    /// Calculate average sign
-    static std::map<unsigned,RealType> calc_sign_from_Pps(const std::map<unsigned,RealType>& Pps, const std::map<unsigned,std::vector<unsigned>>& cs){
-        RealType tot(0);
-        for(const auto& Pp : Pps)
-            tot += calc_sector_sign(cs.at(Pp.first))*Pp.second;
-        return std::map<unsigned,RealType>{{0,tot}};
-    }
-
-    /// Calculate average sign
-    RealType calc_sign(){
-        if(Zps_.size() != 0){
-            return calc_sign_from_Pps(calc_Pps(0), cs_)[0];
-        }else{
-            std::cerr << "ERROR: Zps not yet generated!" << std::endl;
-            exit(1);
-        }
-    }
-
-    /// Calculate cycle probabilities
-    static std::map<unsigned,RealType> calc_Pks_from_Pps(const std::map<unsigned,RealType>& Pps, const std::map<unsigned,std::vector<unsigned>>& cs){
-        unsigned N = cs.at(0).size();
-        std::vector<RealType> num(N,0), dem(N,0);
-        for(const auto& Pp : Pps){
-            for(unsigned l=0; l<N; l++){
-                num[l] += Pp.second * cs.at(Pp.first)[l];
-                dem[l] += Pp.second;
-            }
-        }
-        std::map<unsigned,RealType> Pks;
-        RealType tot(0);
-        for(unsigned l=0; l<N; l++){
-            Pks[l] = num[l]/dem[l];
-            tot += Pks[l];
-        }
-        for(auto& Pk : Pks) // TODO: Not sure if normalization is needed
-            Pk.second /= tot;
-        return Pks;
-    }
-
-    /// Calculate cycle probabilities
-    std::map<unsigned,RealType> calc_Pks(){
-        if(Zps_.size() != 0){
-            return calc_Pks_from_Pps(calc_Pps(0),cs_);
-        }else{
-            std::cerr << "ERROR: Zps not yet generated!" << std::endl;
-            exit(1);
-        }
-    }
-
-    /// Calculate Pls
-    std::map<unsigned,RealType> calc_Pls(){
-        if(Z0s_.size() != 0){
-            return Z0s_;
-        }else{
-            std::cerr << "ERROR: Z0s not yet generated!" << std::endl;
-            exit(1);
-        }
-    }
-
-    /// Calculate Plm1s
-    std::map<unsigned,RealType> calc_Plm1s(){
-        if(Z0s_.size() != 0){
-            std::map<unsigned,RealType> Plm1s(Z0s_);
-            for (auto& Pl : Plm1s)
-                Pl.second -= 1;
-            return Plm1s;
-        }else{
-            std::cerr << "ERROR: Z0s not yet generated!" << std::endl;
-            exit(1);
-        }
-    }
-
-    static std::map<unsigned,RealType> calc_Eps_from_Els(const std::map<unsigned,RealType>& Els, const std::map<unsigned,std::vector<unsigned>>& cs){
-        unsigned N = cs.at(0).size();
-        std::map<unsigned,RealType> Eps;
-        for(const auto& c : cs){
-            RealType tot(0);
-            for(unsigned l=0; l<N; l++)
-                tot += c.second[l]*Els.at(l)*(l+1);
-            Eps[c.first] = tot;
-        }
-        return std::move(Eps);
-    }
-
+    /// Get number of particles
     const unsigned get_N() { return N_; }
+    /// Get number of permutation sectors
     const unsigned get_n_sectors() { return n_sectors_; }
-    const std::map<unsigned,std::vector<unsigned>>& get_cs() { return cs_; }
+    /// Get map of permutation sectors
+    const MapVectorIntType& get_cs() { return cs_; }
 
 private:
     const unsigned N_; ///< number of particles
@@ -184,11 +232,11 @@ private:
     RealType ZF_; ///< fermionic many-particle partition function
     RealType dZBdB_; ///< bosonic many-particle partition function
     RealType dZFdB_; ///< fermionic many-particle partition function
-    std::map<unsigned,RealType> Z0s_; ///< map of single particle partition functions
-    std::map<unsigned,RealType> dZ0dBs_; ///< map of beta derivative of single particle partition functions
-    std::map<unsigned,RealType> Zps_; ///< map of sector partition functions
-    std::map<unsigned,RealType> dZpdBs_; ///< map of beta derivative of sector partition functions
-    std::map<unsigned,std::vector<unsigned>> cs_; ///< map of permutation sectors
+    MapRealType Z0s_; ///< map of single particle partition functions
+    MapRealType dZ0dBs_; ///< map of beta derivative of single particle partition functions
+    MapRealType Zps_; ///< map of sector partition functions
+    MapRealType dZpdBs_; ///< map of beta derivative of sector partition functions
+    MapVectorIntType cs_; ///< map of permutation sectors
 
     /// Initialize permutation sectors for a given species
     void generate_sectors(const unsigned sectors_max=0)

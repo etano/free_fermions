@@ -46,6 +46,15 @@ namespace utils {
         return std::move(m);
     }
 
+    template<class T, class U>
+    std::unordered_map<T,U> convert_umap(const std::vector<std::string>& keys, const std::vector<std::string>& vals){
+        assert(keys.size()==vals.size());
+        std::unordered_map<T,U> m;
+        for(unsigned i=0; i<keys.size(); i++)
+            m[str_to_val<T>(keys[i])] = str_to_val<U>(vals[i]);
+        return std::move(m);
+    }
+
 }
 
 namespace utils {
