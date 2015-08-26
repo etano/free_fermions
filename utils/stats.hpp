@@ -79,11 +79,13 @@ std::vector<T> stats(const std::vector<T>& x)
     T v(var(x,N));
     T k(kappa(x,m,v,N));
     T e = sqrt(k*v/N);
+    if(std::isnan(e))
+        e = 0;
     return std::move(std::vector<T>{m,e,k});
 }
 
 template<class T, class U, typename F, typename... Args>
-std::unordered_map<T,std::pair<U,U>> bootstrap(const std::unordered_map<T,U>& ys, const std::unordered_map<T,U>& y_errs, const unsigned n_bootstrap, F f, utils::rng<U>& rand, Args&&... args){
+std::unordered_map<T,std::pair<U,U>> bootstrap(const std::unordered_map<T,U>& ys, const std::unordered_map<T,U>& y_errs, const unsigned n_bootstrap, utils::rng<U>& rand, F f, Args&&... args){
     assert(ys.size() == y_errs.size());
     std::unordered_map<T,std::vector<U>> p_normals;
     for(unsigned i=0; i<n_bootstrap; i++){

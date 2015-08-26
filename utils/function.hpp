@@ -4,6 +4,14 @@
 namespace utils{
 
 template<class T, class U, class V>
+void unzip(const std::unordered_map<T,U>& ab, std::unordered_map<T,V>& b, std::unordered_map<T,V>& c){
+    for(const auto& e : ab){
+        b[e.first] = e.second.first;
+        c[e.first] = e.second.second;
+    }
+}
+
+template<class T, class U, class V>
 std::unordered_map<T,std::pair<U,V>> zip(const std::unordered_map<T,U>& a, const std::unordered_map<T,V>& b){
     assert(a.size() == b.size());
     std::unordered_map<T,std::pair<U,V>> c;

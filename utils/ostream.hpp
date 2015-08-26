@@ -44,12 +44,14 @@ std::ostream& operator<<(std::ostream& out, const std::unordered_map<T,std::pair
 namespace utils{
 
 template<class T>
-void write(const std::string& f, const T val, const unsigned digits=10){
+void write(const std::string& f, const T val, const unsigned digits=16, const bool print=false){
     std::ofstream f_stream;
     f_stream.precision(digits);
     f_stream.open(f);
     f_stream << val;
     f_stream.close();
+    if(print)
+        std::cout << val << std::endl;
 }
 
 void split(const std::string& s, char delim, std::vector<std::string>& elem) {
