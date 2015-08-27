@@ -6,10 +6,9 @@ namespace free_fermions{
 /// Class that builds a free fermion system and computes quantities of it.
 template<typename RealType>
 class FreeFermions{
-    using MapRealType = std::unordered_map<unsigned,RealType>;
-    using MapVectorIntType = std::unordered_map<unsigned,std::vector<unsigned>>;
-    using MapVectorRealType = std::unordered_map<unsigned,std::vector<RealType>>;
-    using MapMapRealType = std::unordered_map<unsigned,std::unordered_map<unsigned,RealType>>;
+    using VecRealType = std::vector<RealType>;
+    using VecVecRealType = std::vector<std::vector<RealType>>;
+    using VecVecIntType = std::vector<std::vector<unsigned>>;
 public:
     /// Constructor computes \Beta and V, and generates permutation sectors, k vectors, Z0s, dZ0dBs, Zps, dZpdBs, ZB, ZF, EB, and EF.
     FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType lambda, const unsigned n_max, const bool generate_all=true)
@@ -43,160 +42,178 @@ public:
     }
 
     /// Calculate energy given Eps, Pps and cs
-    static MapRealType calc_energy_from_Eps_Pps(const MapRealType& Eps, const MapRealType& Pps, const FreeFermions& ff){
+    static VecRealType calc_energy_from_Eps_Pps(const VecRealType& Eps, const VecRealType& Pps, const FreeFermions& ff){
         RealType num(0), dem(0);
-        for(const auto& Pp : Pps){
-            int sign = calc_sector_sign(ff.get_cs().at(Pp.first));
-            num += sign*Pp.second*Eps.at(Pp.first);
-            dem += sign*Pp.second;
+        auto& cs = ff.get_cs();
+        for(unsigned p=0; p<Pps.size(); p++){
+            int sign = calc_sector_sign(cs[p]);
+            num += sign*Pps[p]*Eps[p];
+            dem += sign*Pps[p];
         }
-        return MapRealType{{0,num/dem}};
+        return VecRealType{num/dem};
     }
 
     /// Calculate Pps from Pls
-    static MapRealType calc_Pps_from_Pls(const MapRealType& Pls, const FreeFermions& ff){
+    static VecRealType calc_Pps_from_Pls(const VecRealType& Pls, const FreeFermions& ff){
         // Calculate constants
         auto N = ff.get_N();
-        std::vector<std::vector<RealType>> Ppls(N);
-        for(const auto& Pl : Pls)
+        VecVecRealType Ppls(N);
+        for(unsigned l=0; l<N; l++){
+            VecRealType Ppls_l(N+1);
             for(unsigned i=0; i<=N; i++)
-                Ppls[Pl.first].push_back(ff.get_inverse_factorial().at(i)*pow(Pl.second/(Pl.first+1),i));
+                Ppls_l[i] = ff.get_inverse_factorial()[i]*pow(Pls[l]/(l+1),i);
+            Ppls[l] = Ppls_l;
+        }
 
         // Calculate Pps
-        MapRealType Pps;
+        auto& cs = ff.get_cs();
+        VecRealType Pps(cs.size());
         RealType Pp_tot(0);
-        for(const auto& c : ff.get_cs()){
+        for(unsigned p=0; p<cs.size(); p++){
             RealType tot(1);
-            for(const auto& Pl : Pls)
-                tot *= Ppls[Pl.first][c.second[Pl.first]];
-            Pps[c.first] = tot;
+            for(unsigned l=0; l<N; l++)
+                tot *= Ppls[l][cs[p][l]];
+            Pps[p] = tot;
             Pp_tot += tot;
         }
-        for(auto& Pp : Pps)
-            Pp.second /= Pp_tot;
+        for(unsigned p=0; p<Pps.size(); p++)
+            Pps[p] /= Pp_tot;
         return std::move(Pps);
     }
 
     /// Calculate Grad Pps from Pls
-    static MapMapRealType calc_grad_Pps_from_Pls(const MapRealType& Pls, const MapRealType& Pps, const FreeFermions& ff){
+    static VecVecRealType calc_grad_Pps_from_Pls(const VecRealType& Pls, const VecRealType& Pps, const FreeFermions& ff){
         // Calculate grad_Pps
-        MapMapRealType grad_Pps;
-        for(const auto& c : ff.get_cs())
-            for(const auto& Pl : Pls){
-                RealType c_Pp_i_Pl = c.second.at(Pl.first)*Pps.at(c.first)/Pl.second;
-                grad_Pps[c.first][Pl.first] = c_Pp_i_Pl*(1-Pps.at(c.first));
-            }
+        VecVecRealType grad_Pps(Pps.size());
+        auto& cs = ff.get_cs();
+        for(unsigned p=0; p<Pps.size(); p++){
+            VecRealType grad_Pps_p(Pls.size());
+            for(unsigned l=0; l<Pls.size(); l++)
+                grad_Pps_p[l] = (cs[p][l]*Pps[p]/Pls[l])*(1-Pps[p]);
+            grad_Pps[p] = grad_Pps_p;
+        }
         return std::move(grad_Pps);
     }
 
     /// Calculate average sign from Pps
-    static MapRealType calc_sign_from_Pps(const MapRealType& Pps, const FreeFermions& ff){
+    static VecRealType calc_sign_from_Pps(const VecRealType& Pps, const FreeFermions& ff){
         RealType tot(0);
-        for(const auto& Pp : Pps)
-            tot += calc_sector_sign(ff.get_cs().at(Pp.first))*Pp.second;
-        return MapRealType{{0,tot}};
+        auto& cs = ff.get_cs();
+        for(unsigned p=0; p<Pps.size(); p++)
+            tot += calc_sector_sign(cs[p])*Pps[p];
+        return VecRealType{tot};
     }
 
     /// Calculate average sign from Pls
-    static MapRealType calc_sign_from_Pls(const MapRealType& Pls, const FreeFermions& ff){
+    static VecRealType calc_sign_from_Pls(const VecRealType& Pls, const FreeFermions& ff){
         return calc_sign_from_Pps(calc_Pps_from_Pls(Pls,ff),ff);
     }
 
     /// Calculate cycle probabilities
-    static MapRealType calc_Pks_from_Pps(const MapRealType& Pps, const FreeFermions& ff){
+    static VecRealType calc_Pks_from_Pps(const VecRealType& Pps, const FreeFermions& ff){
         auto N = ff.get_N();
         std::vector<RealType> num(N,0), dem(N,0);
-        for(const auto& Pp : Pps){
+        auto& cs = ff.get_cs();
+        for(unsigned p=0; p<cs.size(); p++){
             for(unsigned l=0; l<N; l++){
-                num[l] += Pp.second * ff.get_cs().at(Pp.first)[l];
-                dem[l] += Pp.second;
+                num[l] += Pps[p]*cs[p][l];
+                dem[l] += Pps[p];
             }
         }
-        MapRealType Pks;
+        VecRealType Pks(N);
         RealType tot(0);
         for(unsigned l=0; l<N; l++){
             Pks[l] = num[l]/dem[l];
             tot += Pks[l];
         }
-        for(auto& Pk : Pks) // TODO: Not sure if normalization is needed
-            Pk.second /= tot;
+        for(unsigned l=0; l<N; l++)
+            Pks[l] /= tot;
         return Pks;
     }
 
     /// Calculate Pks from Pls
-    static MapRealType calc_Pks_from_Pls(const MapRealType& Pls, const FreeFermions& ff){
+    static VecRealType calc_Pks_from_Pls(const VecRealType& Pls, const FreeFermions& ff){
         return calc_Pks_from_Pps(calc_Pps_from_Pls(Pls,ff),ff);
     }
 
     /// Calculate Grad Pks from Pls
-    static MapMapRealType calc_grad_Pks_from_Pls(const MapRealType& Pls, const MapRealType& Pks, const FreeFermions& ff){
+    static VecVecRealType calc_grad_Pks_from_Pls(const VecRealType& Pls, const VecRealType& Pks, const FreeFermions& ff){
         // Calculate Pps
         const auto Pps = calc_Pps_from_Pls(Pls,ff);
 
         // Calculate (dPk/dPl)/Pk
-        MapMapRealType num;
-        MapRealType dem;
-        for(const auto& Pk : Pks){
-            for(const auto& Pl : Pls)
-                num[Pk.first][Pl.first] = 0;
-            dem[Pk.first] = 0;
+        VecVecRealType num(Pks.size());
+        VecRealType dem(Pks.size());
+        for(unsigned k=0; k<Pks.size(); k++){
+            VecRealType num_k(Pls.size());
+            for(unsigned l=0; l<Pls.size(); l++)
+                num_k[l] = 0;
+            num[k] = num_k;
+            dem[k] = 0;
         }
-        for(const auto& c : ff.get_cs()){
-            for(const auto& Pk : Pks){
-                auto Pp_c_pk = Pps.at(c.first)*c.second.at(Pk.first);
-                for(const auto& Pl : Pls)
-                    num[Pk.first][Pl.first] += c.second.at(Pl.first)*Pp_c_pk/Pl.second;
-                dem[Pk.first] += Pp_c_pk;
+        auto& cs = ff.get_cs();
+        for(unsigned p=0; p<Pps.size(); p++){
+            for(unsigned k=0; k<Pks.size(); k++){
+                const auto Pps_p_cs_p_k = Pps[p]*cs[p][k];
+                for(unsigned l=0; l<Pls.size(); l++)
+                    num[k][l] += cs[p][l]*Pps_p_cs_p_k/Pls[l];
+                dem[k] += Pps_p_cs_p_k;
             }
         }
 
         // Calculate grad_Pks
-        MapMapRealType grad_Pks;
-        for(const auto& Pk : Pks){
-            const auto Pk_1_m_Pk_i_dem = Pk.second*(1-Pk.second)/dem[Pk.first];
-            for(const auto& Pl : Pls)
-                grad_Pks[Pk.first][Pl.first] = num[Pk.first][Pl.first]*Pk_1_m_Pk_i_dem;
+        VecVecRealType grad_Pks(Pks.size());
+        for(unsigned k=0; k<Pks.size(); k++){
+            const auto Pk_1_m_Pk_i_dem = Pks[k]*(1-Pks[k])/dem[k];
+            VecRealType grad_Pks_k(Pls.size());
+            for(unsigned l=0; l<Pls.size(); l++)
+                grad_Pks_k[l] = num[k][l]*Pk_1_m_Pk_i_dem;
+            grad_Pks[k] = grad_Pks_k;
         }
         return std::move(grad_Pks);
     }
 
     /// Calculate Eps from Els
-    static MapRealType calc_Eps_from_Els(const MapRealType& Els, const FreeFermions& ff){
-        MapRealType Eps;
-        for(const auto& c : ff.get_cs()){
+    static VecRealType calc_Eps_from_Els(const VecRealType& Els, const FreeFermions& ff){
+        const auto& cs = ff.get_cs();
+        VecRealType Eps(cs.size());
+        for(unsigned p=0; p<cs.size(); p++){
             RealType tot(0);
-            for(const auto& El : Els)
-                tot += c.second[El.first]*El.second*(El.first+1);
-            Eps[c.first] = tot;
+            for(unsigned l=0; l<Els.size(); l++)
+                tot += cs[p][l]*Els[l]*(l+1);
+            Eps[p] = tot;
         }
         return std::move(Eps);
     }
 
     /// Calculate Grad Eps from Els
-    static MapMapRealType calc_grad_Eps_from_Els(const MapRealType& Els, const MapRealType& Eps, const FreeFermions& ff){
-        MapMapRealType grad_Eps;
-        for(const auto& c : ff.get_cs()){
-            for(const auto& El : Els)
-                grad_Eps[c.first][El.first] = c.second[El.first]*(El.first+1);
+    static VecVecRealType calc_grad_Eps_from_Els(const VecRealType& Els, const VecRealType& Eps, const FreeFermions& ff){
+        const auto& cs = ff.get_cs();
+        VecVecRealType grad_Eps(Eps.size());
+        for(unsigned p=0; p<Eps.size(); p++){
+            VecRealType grad_Eps_p(Els.size());
+            for(unsigned l=0; l<Els.size(); l++)
+                grad_Eps_p[l] = cs[p][l]*(l+1);
+            grad_Eps[p] = grad_Eps_p;
         }
         return std::move(grad_Eps);
     }
 
     /// Calculate E from Els
-    static MapRealType calc_energy_from_Els_Pps(const MapRealType& Els, const MapRealType& Pps, const FreeFermions& ff){
+    static VecRealType calc_energy_from_Els_Pps(const VecRealType& Els, const VecRealType& Pps, const FreeFermions& ff){
         return calc_energy_from_Eps_Pps(calc_Eps_from_Els(Els,ff),Pps,ff);
     }
 
     /// Calculate Pls from exponential model with parameters ps
-    static MapRealType calc_Pls_from_Pl_exp_ps(const MapRealType& ps, const FreeFermions& ff){
-        MapRealType Pls;
-        for(unsigned l=0; l<ff.get_N(); l++){
+    static VecRealType calc_Pls_from_Pl_exp_ps(const VecRealType& ps, const FreeFermions& ff){
+        VecRealType Pls(ff.get_N());
+        for(unsigned l=0; l<Pls.size(); l++){
             RealType tot(0);
             for(unsigned i=1; i<ps.size(); i+=2)
-                tot += ps.at(i)*pow(l+1,ps.at(i+1));
-            Pls[l] = 1 + ps.at(0)*exp(-tot);
+                tot += ps[i]*pow(l+1,ps[i+1]);
+            Pls[l] = 1 + ps[0]*exp(-tot);
         }
-        return Pls;
+        return std::move(Pls);
     }
 
     //1+c*exp(-a*(l+1)**b) = 1 + c*exp(-a*exp(ln(l+1)*b))
@@ -205,25 +222,27 @@ public:
     //= -c*a*ln(l+1)*(l+1)**b*exp(-a*(l+1)**b)
 
     /// Calculate Grad Pls from exponential model with parameters ps
-    static MapMapRealType calc_grad_Pls_from_Pl_exp_ps(const MapRealType& ps, const MapRealType& Pls, const FreeFermions& ff){
-        MapMapRealType grad_Pls_ps;
-        for(const auto& Pl : Pls){
-            grad_Pls_ps[Pl.first][0] = (Pl.second-1)/ps.at(0);
+    static VecVecRealType calc_grad_Pls_from_Pl_exp_ps(const VecRealType& ps, const VecRealType& Pls, const FreeFermions& ff){
+        VecVecRealType grad_Pls_ps(Pls.size());
+        for(unsigned l=0; l<Pls.size(); l++){
+            VecRealType grad_Pls_ps_l(ps.size());
+            grad_Pls_ps_l[0] = (Pls[l]-1)/ps[0];
             for(unsigned i=1; i<ps.size(); i+=2){
-                grad_Pls_ps[Pl.first][i] = -ps.at(0)*pow(Pl.first+1,ps.at(i+1))*((Pl.second-1)/ps.at(0));
-                grad_Pls_ps[Pl.first][i+1] = -ps.at(0)*ps.at(i)*log(Pl.first+1.)*pow(Pl.first+1,ps.at(i+1))*((Pl.second-1)/ps.at(0));
+                grad_Pls_ps_l[i] = -ps[0]*pow(RealType(l+1),ps[i+1])*(Pls[l]-1)/ps[0];
+                grad_Pls_ps_l[i+1] = -ps[0]*ps[i]*log(RealType(l+1))*pow(RealType(l+1),ps[i+1])*(Pls[l]-1)/ps[0];
             }
+            grad_Pls_ps[l] = grad_Pls_ps_l;
         }
-        return grad_Pls_ps;
+        return std::move(grad_Pls_ps);
     }
 
     /// Calculate Pps from exponential model of Pls with parameters ps
-    static MapRealType calc_Pps_from_Pl_exp_ps(const MapRealType& ps, const FreeFermions& ff){
+    static VecRealType calc_Pps_from_Pl_exp_ps(const VecRealType& ps, const FreeFermions& ff){
         return calc_Pps_from_Pls(calc_Pls_from_Pl_exp_ps(ps,ff),ff);
     }
 
     /// Calculate Pps from exponential model of Pls with parameters ps
-    static MapMapRealType calc_grad_Pps_from_Pl_exp_ps(const MapRealType& ps, const MapRealType& Pps, const FreeFermions& ff){
+    static VecVecRealType calc_grad_Pps_from_Pl_exp_ps(const VecRealType& ps, const VecRealType& Pps, const FreeFermions& ff){
         // Calculate Pls
         auto Pls = calc_Pls_from_Pl_exp_ps(ps,ff);
         // Calculate grad_Pps_Pls
@@ -231,23 +250,26 @@ public:
         // Calculate grad_Pls_ps
         auto grad_Pls_ps = calc_grad_Pls_from_Pl_exp_ps(ps,Pls,ff);
         // Calculate grad_Pps_ps
-        MapMapRealType grad_Pps_ps;
-        for(const auto& Pp : Pps)
-            for(const auto& p : ps)
-                grad_Pps_ps[Pp.first][p.first] = 0;
-        for(const auto& Pp : Pps)
-            for(const auto& p : ps)
-                for(const auto& Pl : Pls)
-                     grad_Pps_ps[Pp.first][p.first] += grad_Pls_ps[Pl.first][p.first]*grad_Pps_Pls[Pp.first][Pl.first];
+        VecVecRealType grad_Pps_ps(Pps.size());
+        for(unsigned p=0; p<Pps.size(); p++){
+            VecRealType grad_Pps_ps_p(ps.size());
+            for(unsigned i=0; i<ps.size(); i++)
+                grad_Pps_ps_p[i] = 0;
+            grad_Pps_ps[p] = grad_Pps_ps_p;
+        }
+        for(unsigned p=0; p<Pps.size(); p++)
+            for(unsigned i=0; i<ps.size(); i++)
+                for(unsigned l=0; l<Pls.size(); l++)
+                     grad_Pps_ps[p][i] += grad_Pls_ps[l][i]*grad_Pps_Pls[p][l];
         return std::move(grad_Pps_ps);
     }
 
     /// Calculate Pp
-    MapRealType calc_Pps(const bool fermi){
+    VecRealType calc_Pps(const bool fermi){
         if(Zps_.size() != 0){
-            MapRealType Pps(Zps_);
-            for(auto& Pp : Pps)
-                Pp.second = fermi ? Pp.second/ZF_ : utils::abs(Pp.second)/ZB_;
+            VecRealType Pps(Zps_);
+            for(unsigned p=0; p<Pps.size(); p++)
+                Pps[p] = fermi ? Pps[p]/ZF_ : utils::abs(Pps[p])/ZB_;
             return std::move(Pps);
         }else{
             std::cerr << "ERROR: Zps not yet generated!" << std::endl;
@@ -256,11 +278,11 @@ public:
     }
 
     /// Calculate Ep
-    MapRealType calc_Eps(const bool fermi){
+    VecRealType calc_Eps(const bool fermi){
         if((Zps_.size()!=0)&&(dZpdBs_.size()!=0)){
-            MapRealType Eps(dZpdBs_);
-            for(auto& Ep : Eps)
-                Ep.second = fermi ? Ep.second/Zps_[Ep.first] : utils::abs(Ep.second/Zps_[Ep.first]);
+            VecRealType Eps(dZpdBs_);
+            for(unsigned p=0; p<Eps.size(); p++)
+                Eps[p] = fermi ? Eps[p]/Zps_[p] : utils::abs(Eps[p]/Zps_[p]);
             return std::move(Eps);
         }else{
             std::cerr << "ERROR: Zps or dZpdBs not yet generated!" << std::endl;
@@ -269,7 +291,7 @@ public:
     }
 
     /// Calculate cycle probabilities
-    MapRealType calc_Pks(){
+    VecRealType calc_Pks(){
         if(Zps_.size() != 0){
             return calc_Pks_from_Pps(calc_Pps(0),*this);
         }else{
@@ -279,7 +301,7 @@ public:
     }
 
     /// Calculate Pls
-    MapRealType calc_Pls(){
+    VecRealType calc_Pls(){
         if(Z0s_.size() != 0){
             return Z0s_;
         }else{
@@ -289,12 +311,12 @@ public:
     }
 
     /// Calculate Plm1s
-    MapRealType calc_Plm1s(){
+    VecRealType calc_Plm1s(){
         if(Z0s_.size() != 0){
-            MapRealType Plm1s(Z0s_);
-            for (auto& Pl : Plm1s)
-                Pl.second -= 1;
-            return Plm1s;
+            VecRealType Plm1s(Z0s_);
+            for(unsigned l=0; l<Plm1s.size(); l++)
+                Plm1s[l] -= 1;
+            return std::move(Plm1s);
         }else{
             std::cerr << "ERROR: Z0s not yet generated!" << std::endl;
             exit(1);
@@ -302,12 +324,12 @@ public:
     }
 
     /// Calculate Els
-    MapRealType calc_Els(){
+    VecRealType calc_Els(){
         if((Z0s_.size()!=0)&&(dZ0dBs_.size()!=0)){
-            MapRealType Els;
-            for(const auto& Z0 : Z0s_)
-                Els[Z0.first] = -dZ0dBs_[Z0.first]/(Z0.second*(Z0.first+1));
-            return Els;
+            VecRealType Els(Z0s_.size());
+            for(unsigned l=0; l<Els.size(); l++)
+                Els[l] = -dZ0dBs_[l]/(Z0s_[l]*(l+1));
+            return std::move(Els);
         }else{
             std::cerr << "ERROR: Z0s and/or dZ0/dBs not yet generated!" << std::endl;
             exit(1);
@@ -339,9 +361,9 @@ public:
     /// Get number of permutation sectors
     const unsigned get_n_sectors() const { return n_sectors_; }
     /// Get map of permutation sectors
-    const MapVectorIntType& get_cs() const { return cs_; }
+    const VecVecIntType& get_cs() const { return cs_; }
     /// Get inverse factorial
-    const MapRealType& get_inverse_factorial() const { return inverse_factorial_; }
+    const VecRealType& get_inverse_factorial() const { return inverse_factorial_; }
 
 private:
     const unsigned N_; ///< number of particles
@@ -356,16 +378,15 @@ private:
     RealType ZF_; ///< fermionic many-particle partition function
     RealType dZBdB_; ///< bosonic many-particle partition function
     RealType dZFdB_; ///< fermionic many-particle partition function
-    MapRealType Z0s_; ///< map of single particle partition functions
-    MapRealType dZ0dBs_; ///< map of beta derivative of single particle partition functions
-    MapRealType Zps_; ///< map of sector partition functions
-    MapRealType dZpdBs_; ///< map of beta derivative of sector partition functions
-    MapRealType inverse_factorial_; ///< map of inverse factorial
-    MapVectorIntType cs_; ///< map of permutation sectors
+    VecRealType Z0s_; ///< map of single particle partition functions
+    VecRealType dZ0dBs_; ///< map of beta derivative of single particle partition functions
+    VecRealType Zps_; ///< map of sector partition functions
+    VecRealType dZpdBs_; ///< map of beta derivative of sector partition functions
+    VecRealType inverse_factorial_; ///< map of inverse factorial
+    VecVecIntType cs_; ///< map of permutation sectors
 
     /// Initialize permutation sectors for a given species
-    void generate_sectors(const unsigned sectors_max=0)
-    {
+    void generate_sectors(const unsigned sectors_max=0){
         std::vector<int> a(N_,0);
         int k = 1;
         int y = N_-1;
@@ -394,6 +415,7 @@ private:
         }
         n_sectors_ = perms.size();
         unsigned p(0);
+        cs_.resize(n_sectors_);
         for(const auto& perm : perms){
             std::vector<unsigned> c(N_,0);
             for(const auto& l : perm)
@@ -435,6 +457,7 @@ private:
 
     /// Initialize Z0s
     void generate_Z0s(const std::vector<std::pair<RealType,unsigned>>& k2s){
+        Z0s_.resize(N_);
         for(unsigned i=0; i<N_; i++){
             RealType i_plus_1_beta_lambda = (i+1)*beta_*lambda_;
             RealType tot(0);
@@ -446,6 +469,7 @@ private:
 
     /// Initialize dZ0/d\Betas
     void generate_dZ0dBs(const std::vector<std::pair<RealType,unsigned>>& k2s){
+        dZ0dBs_.resize(N_);
         for(unsigned i=0; i<N_; i++){
             RealType i_plus_1_lambda = (i+1)*lambda_;
             RealType i_plus_1_beta_lambda = i_plus_1_lambda*beta_;
@@ -458,6 +482,7 @@ private:
 
     /// Generate constants
     void generate_constants(){
+        inverse_factorial_.resize(N_+1);
         for(unsigned i=0; i<=N_; i++)
             inverse_factorial_[i] = 1/utils::factorial<RealType>(i);
     }
@@ -465,20 +490,21 @@ private:
     /// Initialize Zps
     void generate_Zps(){
         // Generate Zpws
-        std::vector<std::vector<RealType>> Zpws;
+        VecVecRealType Zpws(N_+1);
         for(unsigned i=0; i<=N_; i++){
             std::vector<RealType> Zp(N_,0);
             for(unsigned j=0; j<N_; j++)
                 Zp[j] = inverse_factorial_[i]*pow(pow(-1,j)*Z0s_[j]/(j+1),i);
-            Zpws.push_back(Zp);
+            Zpws[i] = Zp;
         }
 
         // Generate Zps
         ZB_ = 0; ZF_ = 0;
+        Zps_.resize(n_sectors_);
         for(unsigned p=0; p<n_sectors_; p++){
             RealType tot(1);
             for(unsigned l=0; l<N_; l++)
-                tot *= Zpws[cs_.at(p)[l]][l];
+                tot *= Zpws[cs_[p][l]][l];
             Zps_[p] = tot;
             ZB_ += utils::abs(tot);
             ZF_ += tot;
@@ -488,10 +514,11 @@ private:
     /// Initialize dZpdBs
     void generate_dZpdBs(){
         dZBdB_ = 0; dZFdB_ = 0;
+        dZpdBs_.resize(n_sectors_);
         for(unsigned p=0; p<n_sectors_; p++){
             RealType tot(0);
             for(unsigned l=0; l<N_; l++)
-                tot += cs_.at(p)[l]*dZ0dBs_[l]/Z0s_[l];
+                tot += cs_[p][l]*dZ0dBs_[l]/Z0s_[l];
             tot *= Zps_[p];
             dZpdBs_[p] = tot;
             dZBdB_ += utils::abs(tot);

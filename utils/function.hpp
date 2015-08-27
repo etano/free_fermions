@@ -29,6 +29,15 @@ std::map<T,std::pair<U,V>> zip(const std::map<T,U>& a, const std::map<T,V>& b){
     return std::move(c);
 }
 
+template<class U, class V>
+std::vector<std::pair<U,V>> zip(const std::vector<U>& a, const std::vector<V>& b){
+    assert(a.size() == b.size());
+    std::vector<std::pair<U,V>> c(a.size());
+    for(unsigned i=0; i<a.size(); i++)
+        c[i] = std::make_pair(a[i],b[i]);
+    return std::move(c);
+}
+
 }
 
 #endif

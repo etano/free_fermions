@@ -65,11 +65,11 @@ int main(int argc, char** argv)
     utils::write("El.dat", El, digits);
     if(add_noise){
         auto noise_ps(PpB);
-        for(auto& n : noise_ps)
-            n.second = 1e-100;
+        for(unsigned p=0; p<noise_ps.size(); p++)
+            noise_ps[p] = 1e-100;
         auto noise_ks(Pk);
-        for(auto& n : noise_ks)
-            n.second = 1e-100;
+        for(unsigned k=0; k<noise_ks.size(); k++)
+            noise_ks[k] = 1e-100;
         utils::write("PpB.dat", utils::zip(PpB,noise_ps), digits);
         utils::write("EpB.dat", utils::zip(EpB,noise_ps), digits);
         utils::write("Pk.dat", utils::zip(Pk,noise_ks), digits);
