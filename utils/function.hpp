@@ -11,6 +11,16 @@ void unzip(const std::unordered_map<T,U>& ab, std::unordered_map<T,V>& b, std::u
     }
 }
 
+template<class T, class U>
+void unzip(const std::vector<std::pair<T,U>>& ab, std::vector<T>& a, std::vector<U>& b){
+    a.resize(ab.size());
+    b.resize(ab.size());
+    for(unsigned i=0; i<ab.size(); i++){
+        a[i] = ab[i].first;
+        b[i] = ab[i].second;
+    }
+}
+
 template<class T, class U, class V>
 std::unordered_map<T,std::pair<U,V>> zip(const std::unordered_map<T,U>& a, const std::unordered_map<T,V>& b){
     assert(a.size() == b.size());

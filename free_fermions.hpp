@@ -7,12 +7,13 @@ namespace free_fermions{
 template<typename RealType>
 class FreeFermions{
     using VecRealType = std::vector<RealType>;
+    using VecIntType = std::vector<unsigned>;
     using VecVecRealType = std::vector<std::vector<RealType>>;
     using VecVecIntType = std::vector<std::vector<unsigned>>;
 public:
     /// Constructor computes \Beta and V, and generates permutation sectors, k vectors, Z0s, dZ0dBs, Zps, dZpdBs, ZB, ZF, EB, and EF.
-    FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType lambda, const unsigned n_max, const bool generate_all=true)
-        : N_(N), D_(D), L_(L), T_(T), lambda_(lambda), beta_(1/T), V_(pow(L,D))
+    FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType lambda, const unsigned n_max, const bool generate_all_quantities, VecIntType& used_sectors)
+        : N_(N), D_(D), L_(L), T_(T), lambda_(lambda), beta_(1/T), V_(pow(L,D)), used_sectors_(used_sectors)
     {
         std::cout << "...generating permutation sectors..." << std::endl;
         generate_sectors();
@@ -24,7 +25,7 @@ public:
         generate_dZ0dBs(k2s);
         std::cout << "...generating constants..." << std::endl;
         generate_constants();
-        if (generate_all){
+        if (generate_all_quantities){
             std::cout << "...generating Zps..." << std::endl;
             generate_Zps();
             std::cout << "...generating dZpdBs..." << std::endl;
@@ -112,9 +113,9 @@ public:
     /// Calculate cycle probabilities
     static VecRealType calc_Pks_from_Pps(const VecRealType& Pps, const FreeFermions& ff){
         auto N = ff.get_N();
-        std::vector<RealType> num(N,0), dem(N,0);
+        VecRealType num(N,0), dem(N,0);
         auto& cs = ff.get_cs();
-        for(unsigned p=0; p<cs.size(); p++){
+        for(unsigned p=0; p<Pps.size(); p++){
             for(unsigned l=0; l<N; l++){
                 num[l] += Pps[p]*cs[p][l];
                 dem[l] += Pps[p];
@@ -360,6 +361,8 @@ public:
     const unsigned get_N() const { return N_; }
     /// Get number of permutation sectors
     const unsigned get_n_sectors() const { return n_sectors_; }
+    /// Get number of used permutation sectors
+    const unsigned get_n_used_sectors() const { return used_sectors_.size(); }
     /// Get map of permutation sectors
     const VecVecIntType& get_cs() const { return cs_; }
     /// Get inverse factorial
@@ -384,6 +387,7 @@ private:
     VecRealType dZpdBs_; ///< map of beta derivative of sector partition functions
     VecRealType inverse_factorial_; ///< map of inverse factorial
     VecVecIntType cs_; ///< map of permutation sectors
+    VecIntType used_sectors_; ///< which sectors to use
 
     /// Initialize permutation sectors for a given species
     void generate_sectors(const unsigned sectors_max=0){
@@ -415,14 +419,19 @@ private:
         }
         n_sectors_ = perms.size();
         unsigned p(0);
-        cs_.resize(n_sectors_);
+        VecIntType included_sectors;
         for(const auto& perm : perms){
-            std::vector<unsigned> c(N_,0);
-            for(const auto& l : perm)
-                c[l-1]++;
-            cs_[p] = c;
+            if((std::find(used_sectors_.begin(), used_sectors_.end(), p) != used_sectors_.end()) or (used_sectors_.empty())){
+                std::vector<unsigned> c(N_,0);
+                for(const auto& l : perm)
+                    c[l-1]++;
+                cs_.push_back(c);
+                included_sectors.push_back(p);
+            }
             p++;
         }
+        if(used_sectors_.empty())
+            used_sectors_ = included_sectors;
     }
 
     /// Generates vector of k^2
@@ -500,8 +509,8 @@ private:
 
         // Generate Zps
         ZB_ = 0; ZF_ = 0;
-        Zps_.resize(n_sectors_);
-        for(unsigned p=0; p<n_sectors_; p++){
+        Zps_.resize(cs_.size());
+        for(unsigned p=0; p<Zps_.size(); p++){
             RealType tot(1);
             for(unsigned l=0; l<N_; l++)
                 tot *= Zpws[cs_[p][l]][l];
@@ -514,8 +523,8 @@ private:
     /// Initialize dZpdBs
     void generate_dZpdBs(){
         dZBdB_ = 0; dZFdB_ = 0;
-        dZpdBs_.resize(n_sectors_);
-        for(unsigned p=0; p<n_sectors_; p++){
+        dZpdBs_.resize(cs_.size());
+        for(unsigned p=0; p<dZpdBs_.size(); p++){
             RealType tot(0);
             for(unsigned l=0; l<N_; l++)
                 tot += cs_[p][l]*dZ0dBs_[l]/Z0s_[l];
@@ -525,7 +534,6 @@ private:
             dZFdB_ += tot;
         }
     }
-
 
 };
 

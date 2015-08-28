@@ -37,7 +37,8 @@ int main(int argc, char** argv)
 
     // Create free fermion system
     std::cout << "creating free fermion system..." << std::endl;
-    free_fermions::FreeFermions<RealType> ff(N,D,L,T,lambda,n_max);
+    std::vector<unsigned> used_sectors;
+    free_fermions::FreeFermions<RealType> ff(N,D,L,T,lambda,n_max,true,used_sectors);
 
     // Calculate things
     std::cout << "calculating quantities..." << std::endl;
@@ -66,10 +67,10 @@ int main(int argc, char** argv)
     if(add_noise){
         auto noise_ps(PpB);
         for(unsigned p=0; p<noise_ps.size(); p++)
-            noise_ps[p] = 1e-100;
+            noise_ps[p] = 1e-8;
         auto noise_ks(Pk);
         for(unsigned k=0; k<noise_ks.size(); k++)
-            noise_ks[k] = 1e-100;
+            noise_ks[k] = 1e-8;
         utils::write("PpB.dat", utils::zip(PpB,noise_ps), digits);
         utils::write("EpB.dat", utils::zip(EpB,noise_ps), digits);
         utils::write("Pk.dat", utils::zip(Pk,noise_ks), digits);
