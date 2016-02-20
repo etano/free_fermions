@@ -1,3 +1,4 @@
 *.swp
 *.dat
+*.o
 free_fermions
