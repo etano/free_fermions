@@ -1,5 +1,5 @@
 CXX = g++
-GMPHOME = /usr/local/lib
+GMPHOME = /usr/local
 CXXFLAGS = -Wall -ansi -pedantic -std=c++11 -O3 -funroll-loops -pipe
 
 free_fermions: main.o
