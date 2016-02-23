@@ -22,20 +22,20 @@ int main(int argc, char** argv)
     std::cout.precision(digits);    // Show all the digits
 
     // The rest of the required arguments
-    RealType L, T, lambda;
+    RealType L, T, T_F, lambda, rs;
     if(use_egas_units){
-        RealType rs = params.pop<RealType>("rs");
+        rs = params.pop<RealType>("rs");
         RealType theta = params.pop<RealType>("theta");
         L = egas_units::calc_L(N,D,rs);
-        T = egas_units::calc_T(N,D,rs,theta,polarized);
+        T = egas_units::calc_T(D,rs,theta,polarized);
+        T_F = egas_units::calc_T_F(D,rs,polarized);
         lambda = egas_units::calc_lambda(D,rs);
-        //std::cout << "L (a) " << L << std::endl;
-        //std::cout << "T (Ha) " << T << std::endl;
-        //std::cout << "lambda " << lambda << std::endl;
     }else{
         L = params.pop<RealType>("L");
         T = params.pop<RealType>("T");
         lambda = params.pop<RealType>("lambda");
+        T_F = egas_units::calc_T_F(D,N,L,polarized);
+        rs = egas_units::calc_rs(D,N,L);
     }
 
     // Adjust if unpolarized
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
     // Create free fermion system
     std::cout << "creating free fermion system..." << std::endl;
     std::vector<unsigned> used_sectors;
-    free_fermions::FreeFermions<RealType> ff(N,D,L,T,lambda,n_max,true,used_sectors);
+    free_fermions::FreeFermions<RealType> ff(N,D,L,T,T_F,rs,lambda,n_max,true,used_sectors);
 
     // Calculate things
     std::cout << "calculating quantities..." << std::endl;
@@ -55,6 +55,7 @@ int main(int argc, char** argv)
     auto sign(ff.calc_sign()); auto Pk(ff.calc_Pks());
     auto Pl(ff.calc_Pls()); auto Plm1(ff.calc_Plm1s());
     auto El(ff.calc_Els());
+    auto EB_thermo(ff.calc_E_thermo(0)); auto EF_thermo(ff.calc_E_thermo(1));
 
     // Adjust if unpolarized
     if (!polarized) {
@@ -73,8 +74,10 @@ int main(int argc, char** argv)
     utils::write("EpF.dat", EpF, digits);
     utils::write("EB.dat", EB, digits);
     utils::write("EBN.dat", EB/N, digits);
+    utils::write("EB_thermo.dat", EB_thermo, digits);
     utils::write("EF.dat", EF, digits);
     utils::write("EFN.dat", EF/N, digits);
+    utils::write("EF_thermo.dat", EF_thermo, digits);
     utils::write("sign.dat", sign, digits);
     utils::write("Pk.dat", Pk, digits);
     utils::write("Pl.dat", Pl, digits);

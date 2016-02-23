@@ -1,7 +1,23 @@
 #ifndef FREE_FERMIONS_HPP
 #define FREE_FERMIONS_HPP
 
+#include <gsl/gsl_sf_fermi_dirac.h>
+#include <gsl/gsl_sf_gamma.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_roots.h>
+
 namespace free_fermions{
+
+    struct fermi_params{
+        double theta;
+    };
+
+    /// Function to find the root of
+    double fermi_root(double x, void *params){
+        struct fermi_params *p = (struct fermi_params *) params;
+        return gsl_sf_gamma(3./2.)*gsl_sf_fermi_dirac_half(x) - (2./3.)*pow(p->theta, -3./2.);
+    }
 
 /// Class that builds a free fermion system and computes quantities of it.
 template<typename RealType>
@@ -12,13 +28,13 @@ class FreeFermions{
     using VecVecIntType = std::vector<std::vector<unsigned>>;
 public:
     /// Constructor computes \Beta and V, and generates permutation sectors, k vectors, Z0s, dZ0dBs, Zps, dZpdBs, ZB, ZF, EB, and EF.
-    FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType lambda, const unsigned n_max, const bool generate_all_quantities, VecIntType& used_sectors)
-        : N_(N), D_(D), L_(L), T_(T), lambda_(lambda), beta_(1/T), V_(pow(L,D)), used_sectors_(used_sectors)
+    FreeFermions(const unsigned N, const unsigned D, const RealType L, const RealType T, const RealType T_F, const RealType rs, const RealType lambda, const unsigned n_max, const bool generate_all_quantities, VecIntType& used_sectors)
+        : N_(N), D_(D), n_max_(n_max), L_(L), T_(T), T_F_(T_F), rs_(rs), lambda_(lambda), beta_(1/T), V_(pow(L,D)), used_sectors_(used_sectors)
     {
         std::cout << "...generating permutation sectors..." << std::endl;
         generate_sectors();
         std::cout << "...generating k vectors..." << std::endl;
-        std::vector<std::pair<RealType,unsigned>> k2s(generate_k2s(n_max));
+        std::vector<std::pair<RealType,unsigned>> k2s(generate_k2s(n_max_));
         std::cout << "...generating Z0s..." << std::endl;
         generate_Z0s(k2s);
         std::cout << "...generating dZ0dBs..." << std::endl;
@@ -357,6 +373,35 @@ public:
         }
     }
 
+    /// Calculate total energy in the thermodynamic limit
+    RealType calc_E_thermo(const bool fermi){
+        if(D_!=3)
+            std::cerr << "WARNING: Thermodynamic limit data only for 3D systems!" << std::endl;
+        int status;
+        int iter = 0, max_iter = 1000;
+        const gsl_root_fsolver_type *T;
+        gsl_root_fsolver *s;
+        double n = 0;
+        double x_lo = 0.0, x_hi = 1000.0;
+        gsl_function F;
+        struct fermi_params params = {double(T_/T_F_)};
+        F.function = &fermi_root;
+        F.params = &params;
+        T = gsl_root_fsolver_brent;
+        s = gsl_root_fsolver_alloc (T);
+        gsl_root_fsolver_set (s, &F, x_lo, x_hi);
+        do {
+            iter++;
+            status = gsl_root_fsolver_iterate (s);
+            n = gsl_root_fsolver_root (s);
+            x_lo = gsl_root_fsolver_x_lower (s);
+            x_hi = gsl_root_fsolver_x_upper (s);
+            status = gsl_root_test_interval (x_lo, x_hi, 0, 1.e-8);
+        } while (status == GSL_CONTINUE && iter < max_iter);
+        gsl_root_fsolver_free (s);
+        return pow(rs_, 3)*gsl_sf_gamma(5./2.)*gsl_sf_fermi_dirac_3half(n)/(3*utils::const_pi<RealType>()*pow(0.5*beta_, 5./2.));
+    }
+
     /// Get number of particles
     const unsigned get_N() const { return N_; }
     /// Get number of permutation sectors
@@ -371,9 +416,12 @@ public:
 private:
     const unsigned N_; ///< number of particles
     const unsigned D_; ///< dimension of system
+    const unsigned n_max_; ///< number of periodic images included
     unsigned n_sectors_; ///< number of permutation sectors
     const RealType L_; ///< box side length
     const RealType T_; ///< temperature of system
+    const RealType T_F_; ///< Fermi temperature of system
+    const RealType rs_; ///< Wigner-Seitz radius
     const RealType lambda_; ///< \hbar^2/2m
     const RealType beta_; ///< 1/(k_B T)
     const RealType V_; ///< volume of system
