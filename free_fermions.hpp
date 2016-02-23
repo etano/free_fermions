@@ -9,11 +9,12 @@
 
 namespace free_fermions{
 
+    /// Parameters for finding the Fermi density
     struct fermi_params{
         double theta;
     };
 
-    /// Function to find the root of
+    /// Function whose root is the Fermi density
     double fermi_root(double x, void *params){
         struct fermi_params *p = (struct fermi_params *) params;
         return gsl_sf_gamma(3./2.)*gsl_sf_fermi_dirac_half(x) - (2./3.)*pow(p->theta, -3./2.);
