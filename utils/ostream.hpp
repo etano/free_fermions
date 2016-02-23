@@ -48,7 +48,7 @@ void write(const std::string& f, const T val, const unsigned digits=16, const bo
     std::ofstream f_stream;
     f_stream.precision(digits);
     f_stream.open(f);
-    f_stream << val;
+    f_stream << val << "\n";
     f_stream.close();
     if(print)
         std::cout << val << std::endl;

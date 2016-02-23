@@ -29,13 +29,18 @@ int main(int argc, char** argv)
         L = egas_units::calc_L(N,D,rs);
         T = egas_units::calc_T(N,D,rs,theta,polarized);
         lambda = egas_units::calc_lambda(D,rs);
+        //std::cout << "L (a) " << L << std::endl;
+        //std::cout << "T (Ha) " << T << std::endl;
+        //std::cout << "lambda " << lambda << std::endl;
     }else{
         L = params.pop<RealType>("L");
         T = params.pop<RealType>("T");
         lambda = params.pop<RealType>("lambda");
-        if(!polarized)
-            N /= 2;
     }
+
+    // Adjust if unpolarized
+    if(!polarized)
+        N /= 2;
 
     // Create free fermion system
     std::cout << "creating free fermion system..." << std::endl;
@@ -53,6 +58,7 @@ int main(int argc, char** argv)
 
     // Adjust if unpolarized
     if (!polarized) {
+        N *= 2;
         EB *= 2.;
         EF *= 2.;
     }
@@ -66,7 +72,9 @@ int main(int argc, char** argv)
     utils::write("EpB.dat", EpB, digits);
     utils::write("EpF.dat", EpF, digits);
     utils::write("EB.dat", EB, digits);
+    utils::write("EBN.dat", EB/N, digits);
     utils::write("EF.dat", EF, digits);
+    utils::write("EFN.dat", EF/N, digits);
     utils::write("sign.dat", sign, digits);
     utils::write("Pk.dat", Pk, digits);
     utils::write("Pl.dat", Pl, digits);
