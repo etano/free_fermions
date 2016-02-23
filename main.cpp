@@ -33,6 +33,8 @@ int main(int argc, char** argv)
         L = params.pop<RealType>("L");
         T = params.pop<RealType>("T");
         lambda = params.pop<RealType>("lambda");
+        if(!polarized)
+            N /= 2;
     }
 
     // Create free fermion system
@@ -48,6 +50,12 @@ int main(int argc, char** argv)
     auto sign(ff.calc_sign()); auto Pk(ff.calc_Pks());
     auto Pl(ff.calc_Pls()); auto Plm1(ff.calc_Plm1s());
     auto El(ff.calc_Els());
+
+    // Adjust if unpolarized
+    if (!polarized) {
+        EB *= 2.;
+        EF *= 2.;
+    }
 
     // Write data to file
     std::cout << "writing to file..." << std::endl;
