@@ -377,6 +377,8 @@ public:
     RealType calc_E_thermo(const bool fermi){
         if(D_!=3)
             std::cerr << "WARNING: Thermodynamic limit data only for 3D systems!" << std::endl;
+        if(!fermi)
+            std::cerr << "WARNING: Thermodynamic limit data only for fermions!" << std::endl;
         int status;
         int iter = 0, max_iter = 1000;
         const gsl_root_fsolver_type *T;
