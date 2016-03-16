@@ -17,7 +17,7 @@ struct fermi_params {
 /// Function whose root is the Fermi density
 double fermi_root(double x, void* params) {
     struct fermi_params* p = (struct fermi_params*)params;
-    return gsl_sf_gamma(3. / 2.) * gsl_sf_fermi_dirac_half(x) - (2. / 3.) * pow(p->theta, -3. / 2.);
+    return gsl_sf_gamma(3./2.) * gsl_sf_fermi_dirac_half(x) - (2./3.) * pow(p->theta, -3./2.);
 }
 
 /// Class that builds a free fermion system and computes quantities of it.
@@ -376,21 +376,25 @@ class FreeFermions {
 
     /// Calculate total energy in the thermodynamic limit
     RealType calc_E_thermo(const bool fermi) {
-        if (D_ != 3)
+        if (D_ != 3) {
             std::cerr << "WARNING: Thermodynamic limit data only for 3D systems!" << std::endl;
-        if (!fermi)
+            return 0.;
+        }
+        if (!fermi) {
             std::cerr << "WARNING: Thermodynamic limit data only for fermions!" << std::endl;
+            return 0.;
+        }
         int status;
         int iter = 0, max_iter = 1000;
         const gsl_root_fsolver_type* T;
         gsl_root_fsolver* s;
         double n = 0;
-        double x_lo = 0.0, x_hi = 1000.0;
+        double x_lo = -10.0, x_hi = 1000.0;
         gsl_function F;
         struct fermi_params params = {double(T_ / T_F_)};
         F.function = &fermi_root;
         F.params = &params;
-        T = gsl_root_fsolver_brent;
+        T = gsl_root_fsolver_bisection;
         s = gsl_root_fsolver_alloc(T);
         gsl_root_fsolver_set(s, &F, x_lo, x_hi);
         do {
