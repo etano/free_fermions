@@ -46,8 +46,7 @@ int main(int argc, char** argv)
     auto EpB(ff.calc_Eps(0)); auto EpF(ff.calc_Eps(1));
     auto EB(ff.calc_E(0)); auto EF(ff.calc_E(1));
     auto sign(ff.calc_sign()); auto Pk(ff.calc_Pks());
-    auto Pl(ff.calc_Pls()); auto Plm1(ff.calc_Plm1s());
-    auto El(ff.calc_Els());
+    auto Pl(ff.calc_Pls()); auto El(ff.calc_Els());
 
     // Write data to file
     std::cout << "writing to file..." << std::endl;
@@ -62,7 +61,6 @@ int main(int argc, char** argv)
     utils::write("sign.dat", sign, digits);
     utils::write("Pk.dat", Pk, digits);
     utils::write("Pl.dat", Pl, digits);
-    utils::write("Plm1.dat", Plm1, digits);
     utils::write("El.dat", El, digits);
     if(add_noise){
         auto noise_ps(PpB);
