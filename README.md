@@ -10,7 +10,7 @@ Calculate various properties of free fermions
                     libmpfr-dev \
                     libgsl-dev \
                     libblas-dev \
-                    liblapack-dev \
+                    liblapack-dev
     git clone https://github.com/etano/free_fermions.git
     cd free_fermions/
     make
